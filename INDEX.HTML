@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Escolar - EST No. 18</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+  <header class="bg-blue-900 text-white shadow-lg p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-xl font-bold">Escuela Secundaria Técnica Num. 18</h1>
+        <p class="text-xs text-blue-200">Sistema de Captura y Control de Calificaciones</p>
+      </div>
+      <div id="userInfo" class="hidden text-right">
+        <span id="docenteNombre" class="block font-semibold"></span>
+        <button onclick="cerrarSesion()" class="text-xs text-red-300 hover:underline">Cerrar Sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto p-4 max-w-5xl">
+
+    <section id="secLogin" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-10">
+      <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2 text-center">Acceso Docente</h2>
+      <form id="formLogin" onsubmit="iniciarSesion(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Correo Institucional</label>
+          <input type="email" id="loginCorreo" required placeholder="ejemplo@est18.edu.mx" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">PIN de Acceso</label>
+          <input type="password" id="loginPin" required placeholder="****" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <button type="submit" id="btnLogin" class="w-full bg-blue-800 text-white py-2 rounded font-semibold hover:bg-blue-900 transition">Ingresar al Portal</button>
+      </form>
+      <div id="loginError" class="mt-4 text-sm text-red-600 text-center hidden"></div>
+    </section>
+
+    <section id="secPanel" class="hidden space-y-6">
+
+      <div class="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:gap-4 md:items-end">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700">Seleccionar Materia / Grupo</label>
+          <select id="selectAsignacion" class="w-full mt-1 p-2 border rounded bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="">-- Cargar grupos --</option>
+          </select>
+        </div>
+        <div class="w-full md:w-48">
+          <label class="block text-sm font-medium text-gray-700">Trimestre</label>
+          <select id="selectTrimestre" class="w-full mt-1 p-2 border rounded bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="T1">1er Trimestre</option>
+            <option value="T2">2do Trimestre</option>
+            <option value="T3">3er Trimestre</option>
+          </select>
+        </div>
+        <div>
+          <button onclick="cargarListaAlumnos()" class="w-full md:w-auto bg-blue-700 text-white px-5 py-2 rounded font-semibold hover:bg-blue-800">Cargar Lista</button>
+        </div>
+      </div>
+
+      <div id="herramientasAccion" class="hidden bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-wrap gap-3 justify-between items-center">
+        <div class="flex gap-2">
+          <button onclick="descargarPlantillaCSV()" class="bg-emerald-700 text-white px-3 py-1.5 rounded text-sm hover:bg-emerald-800 flex items-center gap-1">
+            📥 Descargar Excel (CSV)
+          </button>
+          <label class="bg-purple-700 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-800 cursor-pointer flex items-center gap-1">
+            📤 Subir Archivo CSV
+            <input type="file" id="inputFileCSV" accept=".csv" onchange="procesarArchivoCSV(event)" class="hidden">
+          </label>
+        </div>
+        <button onclick="guardarCalificacionesServidor()" id="btnGuardar" class="bg-blue-800 text-white px-5 py-2 rounded font-bold hover:bg-blue-900">
+          💾 Guardar en Servidor
+        </button>
+      </div>
+
+      <div id="contenedorTabla" class="hidden bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-200 text-gray-700 text-sm border-b">
+              <th class="p-3 w-12 text-center">N.L.</th>
+              <th class="p-3">Nombre del Alumno</th>
+              <th class="p-3 w-32 text-center">Calificación</th>
+              <th class="p-3">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAlumnos" class="divide-y divide-gray-100 text-sm">
+            </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // CONFIGURACIÓN: REEMPLAZA CON TU URL WEB APP
+    // ==========================================
+    const WEB_APP_URL = "URL_DE_TU_WEB_APP_APPS_SCRIPT_AQUI";
+
+    // ESTADO LOCAL
+    let docenteSesion = null;
+    let asignacionesDocente = [];
+    let alumnosActuales = [];
+
+    // 1. INICIO DE SESIÓN
+    async function iniciarSesion(e) {
+      e.preventDefault();
+      const correo = document.getElementById("loginCorreo").value.trim();
+      const pin = document.getElementById("loginPin").value.trim();
+      const btn = document.getElementById("btnLogin");
+      const errorDiv = document.getElementById("loginError");
+
+      btn.disabled = true;
+      btn.innerText = "Verificando...";
+      errorDiv.classList.add("hidden");
+
+      try {
+        const resp = await fetch(`${WEB_APP_URL}?action=login&correo=${encodeURIComponent(correo)}&pin=${encodeURIComponent(pin)}`);
+        const data = await resp.json();
+
+        if (data.exito) {
+          docenteSesion = data.docente;
+          asignacionesDocente = data.asignaciones;
+
+          document.getElementById("secLogin").classList.add("hidden");
+          document.getElementById("secPanel").classList.remove("hidden");
+          document.getElementById("userInfo").classList.remove("hidden");
+          document.getElementById("docenteNombre").innerText = docenteSesion.nombre;
+
+          poblarAsignaciones(asignacionesDocente);
+        } else {
+          errorDiv.innerText = data.mensaje;
+          errorDiv.classList.remove("hidden");
+        }
+      } catch (err) {
+        errorDiv.innerText = "Error de conexión con el servidor.";
+        errorDiv.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Ingresar al Portal";
+      }
+    }
+
+    function cerrarSesion() {
+      location.reload();
+    }
+
+    // 2. POBLAR SELECT DE GRUPOS
+    function poblarAsignaciones(lista) {
+      const select = document.getElementById("selectAsignacion");
+      select.innerHTML = '<option value="">-- Seleccione Materia y Grupo --</option>';
+      lista.forEach(asig => {
+        const opt = document.createElement("option");
+        opt.value = asig.id_asignacion;
+        opt.dataset.gradoGrupo = asig.grado_grupo;
+        opt.innerText = `${asig.materia} - ${asig.grado_grupo} (${asig.ciclo_escolar})`;
+        select.appendChild(opt);
+      });
+    }
+
+    // 3. CARGAR LISTA DE ALUMNOS Y NOTAS PREVIAS
+    async function cargarListaAlumnos() {
+      const select = document.getElementById("selectAsignacion");
+      const idAsignacion = select.value;
+      const trimestre = document.getElementById("selectTrimestre").value;
+
+      if (!idAsignacion) {
+        alert("Por favor seleccione un grupo.");
+        return;
+      }
+
+      const optSeleccionada = select.options[select.selectedIndex];
+      const gradoGrupo = optSeleccionada.dataset.gradoGrupo;
+
+      const tbody = document.getElementById("tbodyAlumnos");
+      tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-gray-500">Cargando lista de alumnos...</td></tr>';
+      
+      document.getElementById("contenedorTabla").classList.remove("hidden");
+      document.getElementById("herramientasAccion").classList.remove("hidden");
+
+      try {
+        // Consultar Alumnos y Calificaciones en paralelo
+        const [respAlumnos, respCalig] = await Promise.all([
+          fetch(`${WEB_APP_URL}?action=obtenerAlumnos&grado_grupo=${encodeURIComponent(gradoGrupo)}`),
+          fetch(`${WEB_APP_URL}?action=obtenerCalificaciones&id_asignacion=${encodeURIComponent(idAsignacion)}&trimestre=${encodeURIComponent(trimestre)}`)
+        ]);
+
+        const dataAlumnos = await respAlumnos.json();
+        const dataCalif = await respCalig.json();
+
+        if (dataAlumnos.exito) {
+          alumnosActuales = dataAlumnos.alumnos;
+          renderizarTabla(alumnosActuales, dataCalif.calificaciones || {});
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-500">Error: ${dataAlumnos.mensaje}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-500">Error de conexión al cargar datos.</td></tr>';
+      }
+    }
+
+    // 4. RENDERIZAR TABLA CON INPUTS
+    function renderizarTabla(alumnos, mapaCalificaciones) {
+      const tbody = document.getElementById("tbodyAlumnos");
+      tbody.innerHTML = "";
+
+      alumnos.forEach(alum => {
+        const notaExistente = mapaCalificaciones[alum.curp] ? mapaCalificaciones[alum.curp].calificacion : "";
+        const obsExistente = mapaCalificaciones[alum.curp] ? mapaCalificaciones[alum.curp].observaciones : "";
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-gray-50";
+        tr.innerHTML = `
+          <td class="p-3 text-center font-bold text-gray-600">${alum.numero_lista}</td>
+          <td class="p-3 font-medium">${alum.nombre_completo} <br><span class="text-xs text-gray-400">${alum.curp}</span></td>
+          <td class="p-3 text-center">
+            <input type="number" step="0.1" min="5" max="10" data-curp="${alum.curp}" class="input-calif w-24 p-1 border rounded text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" value="${notaExistente}">
+          </td>
+          <td class="p-3">
+            <input type="text" data-curp="${alum.curp}" class="input-obs w-full p-1 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none" value="${obsExistente}" placeholder="Opcional">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 5. GUARDAR CALIFICACIONES EN EL SERVIDOR (POST)
+    async function guardarCalificacionesServidor() {
+      const select = document.getElementById("selectAsignacion");
+      const idAsignacion = select.value;
+      const trimestre = document.getElementById("selectTrimestre").value;
+      const btn = document.getElementById("btnGuardar");
+
+      const inputsCalif = document.querySelectorAll(".input-calif");
+      const inputsObs = document.querySelectorAll(".input-obs");
+
+      const payloadCalificaciones = [];
+      const mapaObs = {};
+
+      inputsObs.forEach(obs => {
+        mapaObs[obs.dataset.curp] = obs.value.trim();
+      });
+
+      inputsCalif.forEach(input => {
+        const val = input.value.trim();
+        if (val !== "") {
+          payloadCalificaciones.push({
+            curp: input.dataset.curp,
+            calificacion: parseFloat(val),
+            observaciones: mapaObs[input.dataset.curp] || ""
+          });
+        }
+      });
+
+      if (payloadCalificaciones.length === 0) {
+        alert("No ha capturado ninguna calificación para guardar.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Guardando...";
+
+      try {
+        const bodyData = {
+          action: "guardarCalificaciones",
+          payload: {
+            id_asignacion: idAsignacion,
+            trimestre: trimestre,
+            listaCalificaciones: payloadCalificaciones
+          }
+        };
+
+        const resp = await fetch(WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(bodyData)
+        });
+
+        const res = await resp.json();
+        if (res.exito) {
+          alert("¡Calificaciones guardadas exitosamente!");
+        } else {
+          alert("Ocurrió un error: " + res.mensaje);
+        }
+      } catch (err) {
+        alert("Error de red al guardar calificaciones.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "💾 Guardar en Servidor";
+      }
+    }
+
+    // 6. DESCARGAR PLANTILLA EN CSV (PARA TRABAJO OFF-LINE)
+    function descargarPlantillaCSV() {
+      if (alumnosActuales.length === 0) return;
+
+      const select = document.getElementById("selectAsignacion");
+      const textoAsig = select.options[select.selectedIndex].innerText.replace(/[^a-zA-Z0-9]/g, "_");
+      const trimestre = document.getElementById("selectTrimestre").value;
+
+      const datosExportar = alumnosActuales.map(a => {
+        const inputCalif = document.querySelector(`.input-calif[data-curp="${a.curp}"]`);
+        const inputObs = document.querySelector(`.input-obs[data-curp="${a.curp}"]`);
+        return {
+          "CURP": a.curp,
+          "No_Lista": a.numero_lista,
+          "Nombre": a.nombre_completo,
+          "Calificacion": inputCalif ? inputCalif.value : "",
+          "Observaciones": inputObs ? inputObs.value : ""
+        };
+      });
+
+      const csv = Papa.unparse(datosExportar);
+      const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Lista_${textoAsig}_${trimestre}.csv`;
+      link.click();
+    }
+
+    // 7. SUBIR Y PROCESAR ARCHIVO CSV
+    function procesarArchivoCSV(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          let contador = 0;
+          results.data.forEach(row => {
+            const curp = row["CURP"] || row["curp"];
+            const calif = row["Calificacion"] || row["calificacion"];
+            const obs = row["Observaciones"] || row["observaciones"];
+
+            if (curp) {
+              const inputCalif = document.querySelector(`.input-calif[data-curp="${curp}"]`);
+              const inputObs = document.querySelector(`.input-obs[data-curp="${curp}"]`);
+
+              if (inputCalif && calif !== undefined) inputCalif.value = calif;
+              if (inputObs && obs !== undefined) inputObs.value = obs;
+              contador++;
+            }
+          });
+          alert(`Se cargaron los datos de ${contador} alumnos desde el archivo CSV.`);
+          e.target.value = ""; // reset input file
+        }
+      });
+    }
+  </script>
+</body>
+</html>
