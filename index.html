@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -59,7 +59,7 @@
       <div id="contenedorBoletaWeb" class="hidden max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg border-2 border-blue-900">
         <div class="text-center mb-4 border-b pb-3">
           <h2 class="text-lg font-bold text-blue-900">ESCUELA SECUNDARIA TÉCNICA NUM. 18</h2>
-          <p class="text-xs font-semibold text-gray-600">REPORTAJE TRIMESTRAL DE CALIFICACIONES</p>
+          <p class="text-xs font-semibold text-gray-600">REPORTE TRIMESTRAL DE CALIFICACIONES</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2 text-xs mb-4 bg-blue-50 p-3 rounded border border-blue-100">
@@ -91,10 +91,10 @@
     <!-- ========================================== -->
     <section id="secDocentes" class="hidden">
       
-      <!-- LOGIN DOCENTE -->
+      <!-- LOGIN DOCENTE (USANDO DIV Y BUTTON PARA EVITAR SUBMIT/RECARGA) -->
       <section id="secLogin" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
         <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2 text-center">Acceso Docente</h2>
-        <form id="formLogin" onsubmit="iniciarSesion(event)" class="space-y-4">
+        <div id="formLogin" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700">Correo Institucional</label>
             <input type="email" id="loginCorreo" required placeholder="ejemplo@est18.edu.mx" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
@@ -103,8 +103,10 @@
             <label class="block text-sm font-medium text-gray-700">PIN de Acceso</label>
             <input type="password" id="loginPin" required placeholder="****" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
-          <button type="submit" id="btnLogin" class="w-full bg-blue-800 text-white py-2 rounded font-semibold hover:bg-blue-900 transition">Ingresar al Portal</button>
-        </form>
+          <button type="button" onclick="iniciarSesion(event)" id="btnLogin" class="w-full bg-blue-800 text-white py-2 rounded font-semibold hover:bg-blue-900 transition">
+            Ingresar al Portal
+          </button>
+        </div>
         <div id="loginError" class="mt-4 text-sm text-red-600 text-center hidden"></div>
       </section>
 
@@ -167,9 +169,9 @@
 
   <script>
     // ==========================================
-    // CONFIGURACIÓN: URL DE TU WEB APP APPS SCRIPT
+    // CONFIGURACIÓN: URL DE APPS SCRIPT
     // ==========================================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwh93w2tPi3XNAGt1APk6-Jir_oQyg4zQO336TLrmRupvr-ib2n5rZh6oOOQoCav2vp/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxXmZ6njKvObd-NexdMtDTw9VITmUwoAl0FsadOdKm6GL2BA-YZcxgIsPnJLUFJfm4g/exec";
 
     // ESTADO LOCAL
     let docenteSesion = null;
@@ -245,14 +247,21 @@
     }
 
     // ==========================================
-    // INICIO DE SESIÓN DOCENTE
+    // INICIO DE SESIÓN DOCENTE (DIRECTO SIN FORM)
     // ==========================================
     async function iniciarSesion(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
+      
       const correo = document.getElementById("loginCorreo").value.trim();
       const pin = document.getElementById("loginPin").value.trim();
       const btn = document.getElementById("btnLogin");
       const errorDiv = document.getElementById("loginError");
+
+      if (!correo || !pin) {
+        errorDiv.innerText = "Por favor ingresa tu correo y PIN.";
+        errorDiv.classList.remove("hidden");
+        return;
+      }
 
       btn.disabled = true;
       btn.innerText = "Verificando...";
@@ -273,7 +282,7 @@
 
           poblarAsignaciones(asignacionesDocente);
         } else {
-          errorDiv.innerText = data.mensaje;
+          errorDiv.innerText = data.mensaje || "Credenciales incorrectas.";
           errorDiv.classList.remove("hidden");
         }
       } catch (err) {
