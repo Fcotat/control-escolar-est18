@@ -55,7 +55,7 @@
         <div id="consultaError" class="mt-4 text-sm text-red-600 text-center hidden"></div>
       </div>
 
-      <!-- VISTA / TARJETA DE LA BOLETA (SE DESPLIEGA EN PANTALLA) -->
+      <!-- VISTA / TARJETA DE LA BOLETA -->
       <div id="contenedorBoletaWeb" class="hidden max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg border-2 border-blue-900">
         <div class="text-center mb-4 border-b pb-3">
           <h2 class="text-lg font-bold text-blue-900">ESCUELA SECUNDARIA TÉCNICA NUM. 18</h2>
@@ -86,13 +86,12 @@
       </div>
     </section>
 
-
-<!-- ========================================== -->
+    <!-- ========================================== -->
     <!-- SECCIÓN 2: PORTAL Y PANEL DE DOCENTES -->
     <!-- ========================================== -->
     <section id="secDocentes" class="hidden">
       
-      <!-- 1. LOGIN DOCENTE (LO PRIMERO QUE VE EL USUARIO) -->
+      <!-- LOGIN DOCENTE -->
       <section id="secLogin" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
         <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2 text-center">Acceso Docente</h2>
         <form id="formLogin" onsubmit="iniciarSesion(event)" class="space-y-4">
@@ -109,34 +108,8 @@
         <div id="loginError" class="mt-4 text-sm text-red-600 text-center hidden"></div>
       </section>
 
-      <!-- 2. PANEL PRIVADO (SOLO SE MUESTRA TRAS VALIDAR CORREO Y PIN) -->
+      <!-- PANEL DOCENTE -->
       <section id="secPanel" class="hidden space-y-6">
-
-        <!-- MÓDULO PRIVADO: DESCARGA DE LISTAS OFICIALES -->
-        <div class="bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-wrap gap-4 items-center justify-between">
-          <div>
-            <h3 class="font-bold text-gray-800 text-sm">📋 Descargar Listas Oficiales de Grupo</h3>
-            <p class="text-xs text-gray-500">Obtén la lista del grupo en formato Excel/CSV para toma de asistencia o control personal.</p>
-          </div>
-          
-          <div class="flex items-center gap-2">
-            <select id="selectGrupoDescarga" class="p-2 border rounded text-sm bg-gray-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-              <option value="1A">1º A</option>
-              <option value="1B">1º B</option>
-              <option value="2A" selected>2º A</option>
-              <option value="2B">2º B</option>
-              <option value="2C">2º C</option>
-              <option value="3A">3º A</option>
-              <option value="3B">3º B</option>
-            </select>
-            
-            <button onclick="descargarListaGrupoOficial()" id="btnDescargarLista" class="bg-emerald-700 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-800 transition flex items-center gap-1">
-              📥 Descargar Lista (CSV)
-            </button>
-          </div>
-        </div>
-
-        <!-- SELECCIÓN Y CAPTURA DE MATERIA -->
         <div class="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:gap-4 md:items-end">
           <div class="flex-1">
             <label class="block text-sm font-medium text-gray-700">Seleccionar Materia / Grupo</label>
@@ -160,7 +133,7 @@
         <div id="herramientasAccion" class="hidden bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-wrap gap-3 justify-between items-center">
           <div class="flex gap-2">
             <button onclick="descargarPlantillaCSV()" class="bg-emerald-700 text-white px-3 py-1.5 rounded text-sm hover:bg-emerald-800 flex items-center gap-1">
-              📥 Descargar Plantilla Captura (CSV)
+              📥 Descargar Excel (CSV)
             </button>
             <label class="bg-purple-700 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-800 cursor-pointer flex items-center gap-1">
               📤 Subir Archivo CSV
@@ -188,36 +161,6 @@
         </div>
       </section>
 
-    </section>
-
-    
-    
-
-<!-- MÓDULO DE DESCARGA RÁPIDA DE LISTAS DE GRUPO -->
-<div class="bg-white p-4 rounded-lg shadow border border-gray-200 mb-6 flex flex-wrap gap-4 items-center justify-between">
-  <div>
-    <h3 class="font-bold text-gray-800 text-sm">📋 Listas Oficiales de Asistencia / Grupo</h3>
-    <p class="text-xs text-gray-500">Selecciona un grupo para descargar la lista de alumnos en Excel (CSV).</p>
-  </div>
-  
-  <div class="flex items-center gap-2">
-    <select id="selectGrupoDescarga" class="p-2 border rounded text-sm bg-gray-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-      <option value="1A">1º A</option>
-      <option value="1B">1º B</option>
-      <option value="2A" selected>2º A</option>
-      <option value="2B">2º B</option>
-      <option value="2C">2º C</option>
-      <option value="3A">3º A</option>
-      <option value="3B">3º B</option>
-    </select>
-    
-    <button onclick="descargarListaGrupoOficial()" id="btnDescargarLista" class="bg-emerald-700 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-800 transition flex items-center gap-1">
-      📥 Descargar Lista (CSV)
-    </button>
-  </div>
-</div>
-
-      
     </section>
 
   </main>
