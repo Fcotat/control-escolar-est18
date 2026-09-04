@@ -368,63 +368,72 @@
     // GUARDAR CALIFICACIONES EN EL SERVIDOR
     // ==========================================
     async function guardarCalificacionesServidor() {
-      const select = document.getElementById("selectAsignacion");
-      const idAsignacion = select.value;
-      const btn = document.getElementById("btnGuardar");
+  const select = document.getElementById("selectAsignacion");
+  const idAsignacion = select ? select.value : "";
+  const trimestre = document.getElementById("selectTrimestre") ? document.getElementById("selectTrimestre").value : "T1";
+  const btn = document.getElementById("btnGuardar");
 
-      if (!idAsignacion) {
-        alert("Por favor selecciona un grupo y materia de la lista.");
-        return;
-      }
+  if (!idAsignacion) {
+    alert("Por favor selecciona un grupo y materia de la lista.");
+    return;
+  }
 
-      const optSeleccionada = select.options[select.selectedIndex];
-      const textoOpcion = optSeleccionada.innerText || "";
-      const nombreMateria = textoOpcion.split("-")[0].trim();
+  const inputsCalif = document.querySelectorAll(".input-calif");
+  const payloadCalificaciones = [];
 
-      const inputsCalif = document.querySelectorAll(".input-calif");
-      const payloadCalificaciones = [];
+  inputsCalif.forEach(input => {
+    const val = input.value.trim();
+    const curp = input.dataset.curp;
+    
+    // Captura de observación si existe la clase .input-obs
+    const obsInput = document.querySelector(`.input-obs[data-curp="${curp}"]`);
+    const obsVal = obsInput ? obsInput.value.trim() : "";
 
-      inputsCalif.forEach(input => {
-        const val = input.value.trim();
-        const curp = input.dataset.curp;
-        if (val !== "" && curp) {
-          payloadCalificaciones.push({
-            curp: curp.toUpperCase(),
-            calificacion: val
-          });
-        }
+    if (val !== "" && curp) {
+      payloadCalificaciones.push({
+        curp: curp.toUpperCase(),
+        calificacion: val,
+        observaciones: obsVal
       });
-
-      if (payloadCalificaciones.length === 0) {
-        alert("No has capturado ninguna calificación para guardar.");
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerText = "Guardando...";
-
-      try {
-        const materiaEnc = encodeURIComponent(nombreMateria);
-        const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
-
-        const url = `${WEB_APP_URL}?action=guardarCalificaciones&materia=${materiaEnc}&datos=${datosJsonEnc}`;
-
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if (data.exito) {
-          alert("¡Éxito! " + data.mensaje);
-        } else {
-          alert("Atención: " + data.mensaje);
-        }
-      } catch (err) {
-        console.error("Error al guardar:", err);
-        alert("Error de red al guardar calificaciones. Revisa la consola o la versión en Apps Script.");
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "💾 Guardar en Servidor";
-      }
     }
+  });
+
+  if (payloadCalificaciones.length === 0) {
+    alert("No has capturado ninguna calificación para guardar.");
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "Guardando...";
+  }
+
+  try {
+    const idAsigEnc = encodeURIComponent(idAsignacion);
+    const trimEnc = encodeURIComponent(trimestre);
+    const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
+
+    // Enviar id_asignacion explícitamente en la URL de la petición
+    const url = `${WEB_APP_URL}?action=guardarCalificaciones&id_asignacion=${idAsigEnc}&trimestre=${trimEnc}&datos=${datosJsonEnc}`;
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.exito) {
+      alert("¡Éxito! " + data.mensaje);
+    } else {
+      alert("Atención: " + data.mensaje);
+    }
+  } catch (err) {
+    console.error("Error al guardar:", err);
+    alert("Error de red al guardar calificaciones. Revisa la consola o la conexión.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "💾 Guardar en Servidor";
+    }
+  }
+}
 
     // ==========================================
     // DESCARGAR Y CARGAR CSV
