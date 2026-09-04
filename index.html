@@ -373,7 +373,7 @@
       });
     }
 
-    async function guardarCalificacionesServidor() {
+  /*  async function guardarCalificacionesServidor() {
       const select = document.getElementById("selectAsignacion");
       const idAsignacion = select.value;
       const trimestre = document.getElementById("selectTrimestre").value;
@@ -436,8 +436,81 @@
         btn.disabled = false;
         btn.innerText = "💾 Guardar en Servidor";
       }
-    }
+    } */
 
+   /* =================================================================
+   FUNCIÓN VIEJA (DESACTIVADA COMO COMENTARIO)
+   =================================================================
+function guardarCalificacionesServidor() {
+  // ... tu código anterior se queda aquí guardado ...
+}
+*/
+
+// =================================================================
+// FUNCIÓN NUEVA (ACTIVA Y CORREGIDA)
+// =================================================================
+function guardarCalificacionesServidor() {
+  if (!materiaSeleccionada) {
+    alert("Por favor selecciona una materia.");
+    return;
+  }
+
+  var filas = document.querySelectorAll("#tablaAlumnos tbody tr");
+  var datosArray = [];
+
+  filas.forEach(function(fila) {
+    var curp = fila.getAttribute("data-curp");
+    var inputCalif = fila.querySelector(".input-calificacion");
+    
+    if (curp && inputCalif) {
+      datosArray.push({
+        curp: curp,
+        calificacion: inputCalif.value.trim()
+      });
+    }
+  });
+
+  if (datosArray.length === 0) {
+    alert("No hay calificaciones para guardar.");
+    return;
+  }
+
+  var btnGuardar = document.getElementById("btnGuardar");
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+    btnGuardar.innerText = "Guardando...";
+  }
+
+  var materiaEnc = encodeURIComponent(materiaSeleccionada);
+  var datosJsonEnc = encodeURIComponent(JSON.stringify(datosArray));
+
+  var url = URL_APPS_SCRIPT + "?action=guardarCalificaciones&materia=" + materiaEnc + "&datos=" + datosJsonEnc;
+
+  fetch(url)
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(data) {
+      if (btnGuardar) {
+        btnGuardar.disabled = false;
+        btnGuardar.innerText = "Guardar Calificaciones";
+      }
+
+      if (data.exito) {
+        alert("¡Éxito! Las calificaciones han sido guardadas correctamente en la hoja de cálculo.");
+      } else {
+        alert("Atención: " + data.mensaje);
+      }
+    })
+    .catch(function(error) {
+      if (btnGuardar) {
+        btnGuardar.disabled = false;
+        btnGuardar.innerText = "Guardar Calificaciones";
+      }
+      console.error("Error en la petición:", error);
+      alert("Error de red al guardar calificaciones. Verifica la conexión o la URL de la API.");
+    });
+}
     function descargarPlantillaCSV() {
       if (alumnosActuales.length === 0) return;
 
