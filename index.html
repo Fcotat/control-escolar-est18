@@ -445,43 +445,66 @@ function guardarCalificacionesServidor() {
   // ... tu código anterior se queda aquí guardado ...
 }
 */
+async function guardarCalificacionesServidor() {
+  const select = document.getElementById("selectAsignacion");
+  const idAsignacion = select.value;
+  const btn = document.getElementById("btnGuardar");
 
-// =================================================================
-function guardarCalificacionesServidor() {
-  // 1. Detectar la materia seleccionada automáticamente desde la interfaz
-  var nombreMateria = "";
-  
-  // Opción A: Si usas un menú desplegable <select id="selectMateria">
-  var selectMat = document.getElementById("selectMateria") || document.getElementById("materiaSelect");
-  if (selectMat && selectMat.value) {
-    nombreMateria = selectMat.value;
-  }
-  
-  // Opción B: Si la materia se guarda en una variable global con otro nombre
-  if (!nombreMateria && typeof materiaActual !== 'undefined') {
-    nombreMateria = materiaActual;
-  }
-  if (!nombreMateria && typeof asignacionSeleccionada !== 'undefined') {
-    nombreMateria = typeof asignacionSeleccionada === 'object' ? asignacionSeleccionada.materia : asignacionSeleccionada;
-  }
-  if (!nombreMateria && typeof materiaSeleccionada !== 'undefined') {
-    nombreMateria = materiaSeleccionada;
-  }
-
-  // Opción C: Si se muestra en un elemento HTML de título
-  if (!nombreMateria) {
-    var elemTituloMat = document.getElementById("nombreMateria") || document.getElementById("tituloMateria");
-    if (elemTituloMat) {
-      nombreMateria = elemTituloMat.innerText || elemTituloMat.textContent;
-    }
-  }
-
-  // Validar si encontramos el nombre de la materia
-  if (!nombreMateria) {
-    alert("No se pudo detectar la materia seleccionada. Por favor, selecciona una materia de la lista.");
+  if (!idAsignacion) {
+    alert("Por favor selecciona un grupo y materia de la lista.");
     return;
   }
 
+  // Extraer el nombre de la materia seleccionada
+  const optSeleccionada = select.options[select.selectedIndex];
+  const textoOpcion = optSeleccionada.innerText || "";
+  const nombreMateria = textoOpcion.split("-")[0].trim(); // Extrae la materia antes del guión
+
+  // Recopilar calificaciones cargadas en las entradas de la tabla
+  const inputsCalif = document.querySelectorAll(".input-calif");
+  const payloadCalificaciones = [];
+
+  inputsCalif.forEach(input => {
+    const val = input.value.trim();
+    const curp = input.dataset.curp;
+    if (val !== "" && curp) {
+      payloadCalificaciones.push({
+        curp: curp.toUpperCase(),
+        calificacion: val
+      });
+    }
+  });
+
+  if (payloadCalificaciones.length === 0) {
+    alert("No has capturado ninguna calificación para guardar.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Guardando...";
+
+  try {
+    const materiaEnc = encodeURIComponent(nombreMateria);
+    const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
+
+    const url = `${WEB_APP_URL}?action=guardarCalificaciones&materia=${materiaEnc}&datos=${datosJsonEnc}`;
+
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.exito) {
+      alert("¡Éxito! " + data.mensaje);
+    } else {
+      alert("Atención: " + data.mensaje);
+    }
+  } catch (err) {
+    console.error("Error al guardar:", err);
+    alert("Error de red al guardar calificaciones. Revisa la consola o la versión en Apps Script.");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "💾 Guardar en Servidor";
+  }
+}
   // 2. Recopilar alumnos y sus calificaciones de la tabla
   var filas = document.querySelectorAll("#tablaAlumnos tbody tr");
   var datosArray = [];
