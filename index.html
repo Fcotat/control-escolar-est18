@@ -447,31 +447,63 @@ function guardarCalificacionesServidor() {
 */
 
 // =================================================================
-// FUNCIÓN NUEVA (ACTIVA Y CORREGIDA)
-// =================================================================
 function guardarCalificacionesServidor() {
-  if (!materiaSeleccionada) {
-    alert("Por favor selecciona una materia.");
+  // 1. Detectar la materia seleccionada automáticamente desde la interfaz
+  var nombreMateria = "";
+  
+  // Opción A: Si usas un menú desplegable <select id="selectMateria">
+  var selectMat = document.getElementById("selectMateria") || document.getElementById("materiaSelect");
+  if (selectMat && selectMat.value) {
+    nombreMateria = selectMat.value;
+  }
+  
+  // Opción B: Si la materia se guarda en una variable global con otro nombre
+  if (!nombreMateria && typeof materiaActual !== 'undefined') {
+    nombreMateria = materiaActual;
+  }
+  if (!nombreMateria && typeof asignacionSeleccionada !== 'undefined') {
+    nombreMateria = typeof asignacionSeleccionada === 'object' ? asignacionSeleccionada.materia : asignacionSeleccionada;
+  }
+  if (!nombreMateria && typeof materiaSeleccionada !== 'undefined') {
+    nombreMateria = materiaSeleccionada;
+  }
+
+  // Opción C: Si se muestra en un elemento HTML de título
+  if (!nombreMateria) {
+    var elemTituloMat = document.getElementById("nombreMateria") || document.getElementById("tituloMateria");
+    if (elemTituloMat) {
+      nombreMateria = elemTituloMat.innerText || elemTituloMat.textContent;
+    }
+  }
+
+  // Validar si encontramos el nombre de la materia
+  if (!nombreMateria) {
+    alert("No se pudo detectar la materia seleccionada. Por favor, selecciona una materia de la lista.");
     return;
   }
 
+  // 2. Recopilar alumnos y sus calificaciones de la tabla
   var filas = document.querySelectorAll("#tablaAlumnos tbody tr");
   var datosArray = [];
 
   filas.forEach(function(fila) {
     var curp = fila.getAttribute("data-curp");
-    var inputCalif = fila.querySelector(".input-calificacion");
+    if (!curp && fila.cells.length > 0) {
+      curp = fila.cells[0].innerText.trim();
+    }
+    
+    var inputCalif = fila.querySelector("input");
     
     if (curp && inputCalif) {
       datosArray.push({
-        curp: curp,
+        curp: curp.trim().toUpperCase(),
         calificacion: inputCalif.value.trim()
       });
     }
   });
 
   if (datosArray.length === 0) {
-    alert("No hay calificaciones para guardar.");
+    alert("No se encontraron calificaciones registradas en la tabla.");
     return;
   }
 
@@ -481,7 +513,8 @@ function guardarCalificacionesServidor() {
     btnGuardar.innerText = "Guardando...";
   }
 
-  var materiaEnc = encodeURIComponent(materiaSeleccionada);
+  // 3. Preparar URL y enviar a Google Apps Script
+  var materiaEnc = encodeURIComponent(nombreMateria.trim());
   var datosJsonEnc = encodeURIComponent(JSON.stringify(datosArray));
 
   var url = URL_APPS_SCRIPT + "?action=guardarCalificaciones&materia=" + materiaEnc + "&datos=" + datosJsonEnc;
@@ -497,7 +530,7 @@ function guardarCalificacionesServidor() {
       }
 
       if (data.exito) {
-        alert("¡Éxito! Las calificaciones han sido guardadas correctamente en la hoja de cálculo.");
+        alert("¡Éxito! " + data.mensaje);
       } else {
         alert("Atención: " + data.mensaje);
       }
@@ -507,8 +540,8 @@ function guardarCalificacionesServidor() {
         btnGuardar.disabled = false;
         btnGuardar.innerText = "Guardar Calificaciones";
       }
-      console.error("Error en la petición:", error);
-      alert("Error de red al guardar calificaciones. Verifica la conexión o la URL de la API.");
+      console.error("Error en petición:", error);
+      alert("Error de red al intentar guardar. Revisa la consola o la versión en Apps Script.");
     });
 }
     function descargarPlantillaCSV() {
