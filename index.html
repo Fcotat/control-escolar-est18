@@ -91,7 +91,7 @@
     <!-- ========================================== -->
     <section id="secDocentes" class="hidden">
       
-      <!-- LOGIN DOCENTE (USANDO DIV Y BUTTON PARA EVITAR SUBMIT/RECARGA) -->
+      <!-- LOGIN DOCENTE -->
       <section id="secLogin" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
         <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2 text-center">Acceso Docente</h2>
         <div id="formLogin" class="space-y-4">
@@ -247,7 +247,7 @@
     }
 
     // ==========================================
-    // INICIO DE SESIÓN DOCENTE (DIRECTO SIN FORM)
+    // INICIO DE SESIÓN DOCENTE
     // ==========================================
     async function iniciarSesion(e) {
       if (e) e.preventDefault();
@@ -313,7 +313,6 @@
     async function cargarListaAlumnos() {
       const select = document.getElementById("selectAsignacion");
       const idAsignacion = select.value;
-      const trimestre = document.getElementById("selectTrimestre").value;
 
       if (!idAsignacion) {
         alert("Por favor seleccione un grupo.");
@@ -330,17 +329,12 @@
       document.getElementById("herramientasAccion").classList.remove("hidden");
 
       try {
-        const [respAlumnos, respCalig] = await Promise.all([
-          fetch(`${WEB_APP_URL}?action=obtenerAlumnos&grado_grupo=${encodeURIComponent(gradoGrupo)}`),
-          fetch(`${WEB_APP_URL}?action=obtenerCalificaciones&id_asignacion=${encodeURIComponent(idAsignacion)}&trimestre=${encodeURIComponent(trimestre)}`)
-        ]);
-
+        const respAlumnos = await fetch(`${WEB_APP_URL}?action=obtenerAlumnos&grado_grupo=${encodeURIComponent(gradoGrupo)}`);
         const dataAlumnos = await respAlumnos.json();
-        const dataCalif = await respCalig.json();
 
         if (dataAlumnos.exito) {
           alumnosActuales = dataAlumnos.alumnos;
-          renderizarTabla(alumnosActuales, dataCalif.calificaciones || {});
+          renderizarTabla(alumnosActuales);
         } else {
           tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-500">Error: ${dataAlumnos.mensaje}</td></tr>`;
         }
@@ -349,59 +343,60 @@
       }
     }
 
-    function renderizarTabla(alumnos, mapaCalificaciones) {
+    function renderizarTabla(alumnos) {
       const tbody = document.getElementById("tbodyAlumnos");
       tbody.innerHTML = "";
 
       alumnos.forEach(alum => {
-        const notaExistente = mapaCalificaciones[alum.curp] ? mapaCalificaciones[alum.curp].calificacion : "";
-        const obsExistente = mapaCalificaciones[alum.curp] ? mapaCalificaciones[alum.curp].observaciones : "";
-
         const tr = document.createElement("tr");
         tr.className = "hover:bg-gray-50";
         tr.innerHTML = `
           <td class="p-3 text-center font-bold text-gray-600">${alum.numero_lista}</td>
           <td class="p-3 font-medium">${alum.nombre_completo} <br><span class="text-xs text-gray-400">${alum.curp}</span></td>
           <td class="p-3 text-center">
-            <input type="number" step="0.1" min="5" max="10" data-curp="${alum.curp}" class="input-calif w-24 p-1 border rounded text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" value="${notaExistente}">
+            <input type="number" step="0.1" min="5" max="10" data-curp="${alum.curp}" class="input-calif w-24 p-1 border rounded text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" value="">
           </td>
           <td class="p-3">
-            <input type="text" data-curp="${alum.curp}" class="input-obs w-full p-1 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none" value="${obsExistente}" placeholder="Opcional">
+            <input type="text" data-curp="${alum.curp}" class="input-obs w-full p-1 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none" value="" placeholder="Opcional">
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-  /*  async function guardarCalificacionesServidor() {
+    // ==========================================
+    // GUARDAR CALIFICACIONES EN EL SERVIDOR
+    // ==========================================
+    async function guardarCalificacionesServidor() {
       const select = document.getElementById("selectAsignacion");
       const idAsignacion = select.value;
-      const trimestre = document.getElementById("selectTrimestre").value;
       const btn = document.getElementById("btnGuardar");
 
+      if (!idAsignacion) {
+        alert("Por favor selecciona un grupo y materia de la lista.");
+        return;
+      }
+
+      const optSeleccionada = select.options[select.selectedIndex];
+      const textoOpcion = optSeleccionada.innerText || "";
+      const nombreMateria = textoOpcion.split("-")[0].trim();
+
       const inputsCalif = document.querySelectorAll(".input-calif");
-      const inputsObs = document.querySelectorAll(".input-obs");
-
       const payloadCalificaciones = [];
-      const mapaObs = {};
-
-      inputsObs.forEach(obs => {
-        mapaObs[obs.dataset.curp] = obs.value.trim();
-      });
 
       inputsCalif.forEach(input => {
         const val = input.value.trim();
-        if (val !== "") {
+        const curp = input.dataset.curp;
+        if (val !== "" && curp) {
           payloadCalificaciones.push({
-            curp: input.dataset.curp,
-            calificacion: parseFloat(val),
-            observaciones: mapaObs[input.dataset.curp] || ""
+            curp: curp.toUpperCase(),
+            calificacion: val
           });
         }
       });
 
       if (payloadCalificaciones.length === 0) {
-        alert("No ha capturado ninguna calificación para guardar.");
+        alert("No has capturado ninguna calificación para guardar.");
         return;
       }
 
@@ -409,170 +404,36 @@
       btn.innerText = "Guardando...";
 
       try {
-        const bodyData = {
-          action: "guardarCalificaciones",
-          payload: {
-            id_asignacion: idAsignacion,
-            trimestre: trimestre,
-            listaCalificaciones: payloadCalificaciones
-          }
-        };
+        const materiaEnc = encodeURIComponent(nombreMateria);
+        const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
 
-        const resp = await fetch(WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(bodyData)
-        });
+        const url = `${WEB_APP_URL}?action=guardarCalificaciones&materia=${materiaEnc}&datos=${datosJsonEnc}`;
 
-        const res = await resp.json();
-        if (res.exito) {
-          alert("¡Calificaciones guardadas exitosamente!");
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.exito) {
+          alert("¡Éxito! " + data.mensaje);
         } else {
-          alert("Ocurrió un error: " + res.mensaje);
+          alert("Atención: " + data.mensaje);
         }
       } catch (err) {
-        alert("Error de red al guardar calificaciones.");
+        console.error("Error al guardar:", err);
+        alert("Error de red al guardar calificaciones. Revisa la consola o la versión en Apps Script.");
       } finally {
         btn.disabled = false;
         btn.innerText = "💾 Guardar en Servidor";
       }
-    } */
-
-   /* =================================================================
-   FUNCIÓN VIEJA (DESACTIVADA COMO COMENTARIO)
-   =================================================================
-function guardarCalificacionesServidor() {
-  // ... tu código anterior se queda aquí guardado ...
-}
-*/
-async function guardarCalificacionesServidor() {
-  const select = document.getElementById("selectAsignacion");
-  const idAsignacion = select.value;
-  const btn = document.getElementById("btnGuardar");
-
-  if (!idAsignacion) {
-    alert("Por favor selecciona un grupo y materia de la lista.");
-    return;
-  }
-
-  // Extraer el nombre de la materia seleccionada
-  const optSeleccionada = select.options[select.selectedIndex];
-  const textoOpcion = optSeleccionada.innerText || "";
-  const nombreMateria = textoOpcion.split("-")[0].trim(); // Extrae la materia antes del guión
-
-  // Recopilar calificaciones cargadas en las entradas de la tabla
-  const inputsCalif = document.querySelectorAll(".input-calif");
-  const payloadCalificaciones = [];
-
-  inputsCalif.forEach(input => {
-    const val = input.value.trim();
-    const curp = input.dataset.curp;
-    if (val !== "" && curp) {
-      payloadCalificaciones.push({
-        curp: curp.toUpperCase(),
-        calificacion: val
-      });
     }
-  });
 
-  if (payloadCalificaciones.length === 0) {
-    alert("No has capturado ninguna calificación para guardar.");
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerText = "Guardando...";
-
-  try {
-    const materiaEnc = encodeURIComponent(nombreMateria);
-    const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
-
-    const url = `${WEB_APP_URL}?action=guardarCalificaciones&materia=${materiaEnc}&datos=${datosJsonEnc}`;
-
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    if (data.exito) {
-      alert("¡Éxito! " + data.mensaje);
-    } else {
-      alert("Atención: " + data.mensaje);
-    }
-  } catch (err) {
-    console.error("Error al guardar:", err);
-    alert("Error de red al guardar calificaciones. Revisa la consola o la versión en Apps Script.");
-  } finally {
-    btn.disabled = false;
-    btn.innerText = "💾 Guardar en Servidor";
-  }
-}
-  // 2. Recopilar alumnos y sus calificaciones de la tabla
-  var filas = document.querySelectorAll("#tablaAlumnos tbody tr");
-  var datosArray = [];
-
-  filas.forEach(function(fila) {
-    var curp = fila.getAttribute("data-curp");
-    if (!curp && fila.cells.length > 0) {
-      curp = fila.cells[0].innerText.trim();
-    }
-    
-    var inputCalif = fila.querySelector("input");
-    
-    if (curp && inputCalif) {
-      datosArray.push({
-        curp: curp.trim().toUpperCase(),
-        calificacion: inputCalif.value.trim()
-      });
-    }
-  });
-
-  if (datosArray.length === 0) {
-    alert("No se encontraron calificaciones registradas en la tabla.");
-    return;
-  }
-
-  var btnGuardar = document.getElementById("btnGuardar");
-  if (btnGuardar) {
-    btnGuardar.disabled = true;
-    btnGuardar.innerText = "Guardando...";
-  }
-
-  // 3. Preparar URL y enviar a Google Apps Script
-  var materiaEnc = encodeURIComponent(nombreMateria.trim());
-  var datosJsonEnc = encodeURIComponent(JSON.stringify(datosArray));
-
-  var url = URL_APPS_SCRIPT + "?action=guardarCalificaciones&materia=" + materiaEnc + "&datos=" + datosJsonEnc;
-
-  fetch(url)
-    .then(function(response) {
-      return response.json();
-    })
-    .then(function(data) {
-      if (btnGuardar) {
-        btnGuardar.disabled = false;
-        btnGuardar.innerText = "Guardar Calificaciones";
-      }
-
-      if (data.exito) {
-        alert("¡Éxito! " + data.mensaje);
-      } else {
-        alert("Atención: " + data.mensaje);
-      }
-    })
-    .catch(function(error) {
-      if (btnGuardar) {
-        btnGuardar.disabled = false;
-        btnGuardar.innerText = "Guardar Calificaciones";
-      }
-      console.error("Error en petición:", error);
-      alert("Error de red al intentar guardar. Revisa la consola o la versión en Apps Script.");
-    });
-}
+    // ==========================================
+    // DESCARGAR Y CARGAR CSV
+    // ==========================================
     function descargarPlantillaCSV() {
       if (alumnosActuales.length === 0) return;
 
       const select = document.getElementById("selectAsignacion");
       const textoAsig = select.options[select.selectedIndex].innerText.replace(/[^a-zA-Z0-9]/g, "_");
-      const trimestre = document.getElementById("selectTrimestre").value;
 
       const datosExportar = alumnosActuales.map(a => {
         const inputCalif = document.querySelector(`.input-calif[data-curp="${a.curp}"]`);
@@ -590,7 +451,7 @@ async function guardarCalificacionesServidor() {
       const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `Lista_${textoAsig}_${trimestre}.csv`;
+      link.download = `Lista_${textoAsig}.csv`;
       link.click();
     }
 
