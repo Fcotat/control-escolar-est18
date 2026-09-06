@@ -365,9 +365,9 @@
     }
 
     // ==========================================
-    // GUARDAR CALIFICACIONES EN EL SERVIDOR
-    // ==========================================
-    async function guardarCalificacionesServidor() {
+    // GUARDAR CALIFICACIONES EN EL SERVIDOR (CORREGIDO CON POST)
+// ==========================================
+async function guardarCalificacionesServidor() {
   const select = document.getElementById("selectAsignacion");
   const idAsignacion = select ? select.value : "";
   const trimestre = document.getElementById("selectTrimestre") ? document.getElementById("selectTrimestre").value : "T1";
@@ -378,6 +378,64 @@
     return;
   }
 
+  // Recopilar calificaciones de la tabla gráfica
+  const filas = document.querySelectorAll("#tablaAlumnos tbody tr");
+  const datos = [];
+
+  filas.forEach(fila => {
+    const curp = fila.getAttribute("data-curp") || (fila.cells[0] ? fila.cells[0].innerText.trim() : "");
+    const inputCalif = fila.querySelector(".input-calif");
+    const inputObs = fila.querySelector(".input-obs");
+
+    const calificacion = inputCalif ? inputCalif.value.trim() : "";
+    const observaciones = inputObs ? inputObs.value.trim() : "";
+
+    if (curp && calificacion !== "") {
+      datos.push({
+        curp: curp,
+        calificacion: calificacion,
+        observaciones: observaciones
+      });
+    }
+  });
+
+  if (datos.length === 0) {
+    alert("No hay calificaciones ingresadas para guardar.");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    // Empaquetar los datos en el cuerpo (body) de la petición POST
+    const payload = new URLSearchParams();
+    payload.append("action", "guardarCalificaciones");
+    payload.append("id_asignacion", idAsignacion);
+    payload.append("trimestre", trimestre);
+    payload.append("datos", encodeURIComponent(JSON.stringify(datos)));
+
+    const response = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: payload.toString()
+    });
+
+    const res = await response.json();
+
+    if (res.exito) {
+      alert("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente."));
+    } else {
+      alert("Error al guardar: " + res.mensaje);
+    }
+  } catch (error) {
+    console.error("Error al guardar:", error);
+    alert("Error de conexión al intentar guardar. Revisa la consola.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
   const inputsCalif = document.querySelectorAll(".input-calif");
   const payloadCalificaciones = [];
 
