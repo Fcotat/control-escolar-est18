@@ -148,7 +148,7 @@
         </div>
 
         <div id="contenedorTabla" class="hidden bg-white rounded-lg shadow overflow-x-auto">
-          <table class="w-full text-left border-collapse">
+          <table id="tablaAlumnos" class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-gray-200 text-gray-700 text-sm border-b">
                 <th class="p-3 w-12 text-center">N.L.</th>
@@ -365,133 +365,79 @@
     }
 
     // ==========================================
-    // GUARDAR CALIFICACIONES EN EL SERVIDOR (CORREGIDO CON POST)
-// ==========================================
-async function guardarCalificacionesServidor() {
-  const select = document.getElementById("selectAsignacion");
-  const idAsignacion = select ? select.value : "";
-  const trimestre = document.getElementById("selectTrimestre") ? document.getElementById("selectTrimestre").value : "T1";
-  const btn = document.getElementById("btnGuardar");
+    // GUARDAR CALIFICACIONES EN EL SERVIDOR (POST UNIFICADO)
+    // ==========================================
+    async function guardarCalificacionesServidor() {
+      const select = document.getElementById("selectAsignacion");
+      const idAsignacion = select ? select.value : "";
+      const trimestre = document.getElementById("selectTrimestre") ? document.getElementById("selectTrimestre").value : "T1";
+      const btn = document.getElementById("btnGuardar");
 
-  if (!idAsignacion) {
-    alert("Por favor selecciona un grupo y materia de la lista.");
-    return;
-  }
+      if (!idAsignacion) {
+        alert("Por favor selecciona un grupo y materia de la lista.");
+        return;
+      }
 
-  // Recopilar calificaciones de la tabla gráfica
-  const filas = document.querySelectorAll("#tablaAlumnos tbody tr");
-  const datos = [];
+      const inputsCalif = document.querySelectorAll(".input-calif");
+      const datos = [];
 
-  filas.forEach(fila => {
-    const curp = fila.getAttribute("data-curp") || (fila.cells[0] ? fila.cells[0].innerText.trim() : "");
-    const inputCalif = fila.querySelector(".input-calif");
-    const inputObs = fila.querySelector(".input-obs");
+      inputsCalif.forEach(input => {
+        const val = input.value.trim();
+        const curp = input.dataset.curp;
+        const obsInput = document.querySelector(`.input-obs[data-curp="${curp}"]`);
+        const obsVal = obsInput ? obsInput.value.trim() : "";
 
-    const calificacion = inputCalif ? inputCalif.value.trim() : "";
-    const observaciones = inputObs ? inputObs.value.trim() : "";
-
-    if (curp && calificacion !== "") {
-      datos.push({
-        curp: curp,
-        calificacion: calificacion,
-        observaciones: observaciones
+        if (val !== "" && curp) {
+          datos.push({
+            curp: curp.toUpperCase(),
+            calificacion: val,
+            observaciones: obsVal
+          });
+        }
       });
+
+      if (datos.length === 0) {
+        alert("No has capturado ninguna calificación para guardar.");
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Guardando...";
+      }
+
+      try {
+        const payload = new URLSearchParams();
+        payload.append("action", "guardarCalificaciones");
+        payload.append("id_asignacion", idAsignacion);
+        payload.append("trimestre", trimestre);
+        payload.append("datos", encodeURIComponent(JSON.stringify(datos)));
+
+        const response = await fetch(WEB_APP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: payload.toString()
+        });
+
+        const res = await response.json();
+
+        if (res.exito) {
+          alert("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente."));
+        } else {
+          alert("Error al guardar: " + res.mensaje);
+        }
+      } catch (error) {
+        console.error("Error al guardar:", error);
+        alert("Error de conexión al intentar guardar. Revisa la consola.");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = "💾 Guardar en Servidor";
+        }
+      }
     }
-  });
-
-  if (datos.length === 0) {
-    alert("No hay calificaciones ingresadas para guardar.");
-    return;
-  }
-
-  if (btn) btn.disabled = true;
-
-  try {
-    // Empaquetar los datos en el cuerpo (body) de la petición POST
-    const payload = new URLSearchParams();
-    payload.append("action", "guardarCalificaciones");
-    payload.append("id_asignacion", idAsignacion);
-    payload.append("trimestre", trimestre);
-    payload.append("datos", encodeURIComponent(JSON.stringify(datos)));
-
-    const response = await fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: payload.toString()
-    });
-
-    const res = await response.json();
-
-    if (res.exito) {
-      alert("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente."));
-    } else {
-      alert("Error al guardar: " + res.mensaje);
-    }
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Error de conexión al intentar guardar. Revisa la consola.");
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-  const inputsCalif = document.querySelectorAll(".input-calif");
-  const payloadCalificaciones = [];
-
-  inputsCalif.forEach(input => {
-    const val = input.value.trim();
-    const curp = input.dataset.curp;
-    
-    // Captura de observación si existe la clase .input-obs
-    const obsInput = document.querySelector(`.input-obs[data-curp="${curp}"]`);
-    const obsVal = obsInput ? obsInput.value.trim() : "";
-
-    if (val !== "" && curp) {
-      payloadCalificaciones.push({
-        curp: curp.toUpperCase(),
-        calificacion: val,
-        observaciones: obsVal
-      });
-    }
-  });
-
-  if (payloadCalificaciones.length === 0) {
-    alert("No has capturado ninguna calificación para guardar.");
-    return;
-  }
-
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = "Guardando...";
-  }
-
-  try {
-    const idAsigEnc = encodeURIComponent(idAsignacion);
-    const trimEnc = encodeURIComponent(trimestre);
-    const datosJsonEnc = encodeURIComponent(JSON.stringify(payloadCalificaciones));
-
-    // Enviar id_asignacion explícitamente en la URL de la petición
-    const url = `${WEB_APP_URL}?action=guardarCalificaciones&id_asignacion=${idAsigEnc}&trimestre=${trimEnc}&datos=${datosJsonEnc}`;
-
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    if (data.exito) {
-      alert("¡Éxito! " + data.mensaje);
-    } else {
-      alert("Atención: " + data.mensaje);
-    }
-  } catch (err) {
-    console.error("Error al guardar:", err);
-    alert("Error de red al guardar calificaciones. Revisa la consola o la conexión.");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = "💾 Guardar en Servidor";
-    }
-  }
-}
 
     // ==========================================
     // DESCARGAR Y CARGAR CSV
