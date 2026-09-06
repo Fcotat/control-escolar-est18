@@ -370,6 +370,9 @@
  // ==========================================
     // GUARDAR CALIFICACIONES EN EL SERVIDOR (POST CON CONFIRMACIÓN)
     // ==========================================
+   // ==========================================
+    // GUARDAR CALIFICACIONES EN EL SERVIDOR (SOPORTE MASIVO 353+ ALUMNOS)
+    // ==========================================
     async function guardarCalificacionesServidor() {
       const select = document.getElementById("selectAsignacion");
       const idAsignacion = select ? select.value : "";
@@ -381,7 +384,6 @@
         return;
       }
 
-      // Buscar casillas en el tbody activo
       const inputsCalif = document.querySelectorAll("#tbodyAlumnos .input-calif");
       const datos = [];
 
@@ -411,31 +413,32 @@
       }
 
       try {
-        const payload = new URLSearchParams();
-        payload.append("action", "guardarCalificaciones");
-        payload.append("id_asignacion", idAsignacion);
-        payload.append("trimestre", trimestre);
-        payload.append("datos", encodeURIComponent(JSON.stringify(datos)));
+        // Empaquetar el payload en un único objeto JSON
+        const payload = {
+          action: "guardarCalificaciones",
+          id_asignacion: idAsignacion,
+          trimestre: trimestre,
+          datos: JSON.stringify(datos)
+        };
 
         const response = await fetch(WEB_APP_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "text/plain;charset=utf-8" // Previene problemas de CORS en Apps Script
           },
-          body: payload.toString()
+          body: JSON.stringify(payload)
         });
 
         const res = await response.json();
-        console.log("Respuesta recibida del servidor:", res);
 
         if (res.exito) {
-          alert("¡ÉXITO EN EL SERVIDOR!\n" + (res.mensaje || "Se guardaron las calificaciones correctamente."));
+          alert("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente."));
         } else {
           alert("Aviso del servidor: " + res.mensaje);
         }
       } catch (error) {
         console.error("Error completo al guardar:", error);
-        alert("Error al conectar con la hoja de cálculo. Revisa la consola.");
+        alert("Error de conexión al intentar guardar. Revisa la consola.");
       } finally {
         if (btn) {
           btn.disabled = false;
