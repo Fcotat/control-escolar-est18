@@ -6,6 +6,48 @@
   <title>Control Escolar - EST No. 18</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  
+  <style>
+    /* ==========================================
+       ESTILOS EXCLUSIVOS PARA IMPRESIÓN IMPRESO
+       ========================================== */
+    #formato-oficial-print {
+      display: none;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #formato-oficial-print, #formato-oficial-print * {
+        visibility: visible !important;
+      }
+      #formato-oficial-print {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        background: white !important;
+        color: black !important;
+      }
+      .tabla-print {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 8pt;
+      }
+      .tabla-print th, .tabla-print td {
+        border: 1px solid #000;
+        padding: 3px 4px;
+      }
+      .tabla-print th {
+        background-color: #f2f2f2 !important;
+        -webkit-print-color-adjust: exact;
+      }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800">
 
@@ -142,9 +184,15 @@
               <input type="file" id="inputFileCSV" accept=".csv" onchange="procesarArchivoCSV(event)" class="hidden">
             </label>
           </div>
-          <button onclick="guardarCalificacionesServidor()" id="btnGuardar" class="bg-blue-800 text-white px-5 py-2 rounded font-bold hover:bg-blue-900">
-            💾 Guardar en Servidor
-          </button>
+          
+          <div class="flex gap-2">
+            <button onclick="imprimirFormatoOficial()" class="bg-amber-600 text-white px-4 py-2 rounded font-semibold hover:bg-amber-700 transition flex items-center gap-1">
+              🖨️ Imprimir Lista Oficial
+            </button>
+            <button onclick="guardarCalificacionesServidor()" id="btnGuardar" class="bg-blue-800 text-white px-5 py-2 rounded font-bold hover:bg-blue-900 transition">
+              💾 Guardar en Servidor
+            </button>
+          </div>
         </div>
 
         <div id="contenedorTabla" class="hidden bg-white rounded-lg shadow overflow-x-auto">
@@ -304,6 +352,7 @@
       lista.forEach(asig => {
         const opt = document.createElement("option");
         opt.value = asig.id_asignacion;
+        opt.dataset.materia = asig.materia;
         opt.dataset.gradoGrupo = asig.grado_grupo;
         opt.innerText = `${asig.materia} - ${asig.grado_grupo} (${asig.ciclo_escolar})`;
         select.appendChild(opt);
@@ -352,7 +401,7 @@
         tr.className = "hover:bg-gray-50";
         tr.innerHTML = `
           <td class="p-3 text-center font-bold text-gray-600">${alum.numero_lista}</td>
-          <td class="p-3 font-medium">${alum.nombre_completo} <br><span class="text-xs text-gray-400">${alum.curp}</span></td>
+          <td class="p-3 font-medium <span class='nombre-alumno-txt'>">${alum.nombre_completo}</span> <br><span class="text-xs text-gray-400">${alum.curp}</span></td>
           <td class="p-3 text-center">
             <input type="number" step="0.1" min="5" max="10" data-curp="${alum.curp}" class="input-calif w-24 p-1 border rounded text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" value="">
           </td>
@@ -365,13 +414,7 @@
     }
 
     // ==========================================
-    // GUARDAR CALIFICACIONES EN EL SERVIDOR (POST UNIFICADO)
-    // ==========================================
- // ==========================================
-    // GUARDAR CALIFICACIONES EN EL SERVIDOR (POST CON CONFIRMACIÓN)
-    // ==========================================
-   // ==========================================
-    // GUARDAR CALIFICACIONES EN EL SERVIDOR (SOPORTE MASIVO 353+ ALUMNOS)
+    // GUARDAR CALIFICACIONES CON OPCIÓN DE IMPRESIÓN
     // ==========================================
     async function guardarCalificacionesServidor() {
       const select = document.getElementById("selectAsignacion");
@@ -413,7 +456,6 @@
       }
 
       try {
-        // Empaquetar el payload en un único objeto JSON
         const payload = {
           action: "guardarCalificaciones",
           id_asignacion: idAsignacion,
@@ -424,7 +466,7 @@
         const response = await fetch(WEB_APP_URL, {
           method: "POST",
           headers: {
-            "Content-Type": "text/plain;charset=utf-8" // Previene problemas de CORS en Apps Script
+            "Content-Type": "text/plain;charset=utf-8"
           },
           body: JSON.stringify(payload)
         });
@@ -432,7 +474,10 @@
         const res = await response.json();
 
         if (res.exito) {
-          alert("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente."));
+          // CONFIRMACIÓN MÁS GENERACIÓN DE IMPRESIÓN
+          if (confirm("¡Éxito! " + (res.mensaje || "Se guardaron las calificaciones correctamente.") + "\n\n¿Deseas imprimir o guardar la Lista Oficial en PDF en este momento?")) {
+            imprimirFormatoOficial();
+          }
         } else {
           alert("Aviso del servidor: " + res.mensaje);
         }
@@ -445,6 +490,113 @@
           btn.innerText = "💾 Guardar en Servidor";
         }
       }
+    }
+
+    // ==========================================
+    // IMPRIMIR FORMATO OFICIAL INSTITUCIONAL (EST 18 / IEEPO)
+    // ==========================================
+    function imprimirFormatoOficial() {
+      const select = document.getElementById("selectAsignacion");
+      if (!select || !select.value) {
+        alert("Primero selecciona un grupo y materia.");
+        return;
+      }
+
+      const optSel = select.options[select.selectedIndex];
+      const materiaTexto = optSel.dataset.materia || optSel.innerText;
+      const grupoTexto = optSel.dataset.gradoGrupo || "GRUPO";
+      const docenteTexto = docenteSesion ? docenteSesion.nombre : "PROFESOR (A)";
+      const trimestreSelect = document.getElementById("selectTrimestre");
+      const trimestreTexto = trimestreSelect ? trimestreSelect.options[trimestreSelect.selectedIndex].text : "PERIODO";
+      const fechaHoy = new Date().toLocaleDateString('es-MX');
+
+      let htmlFormat = `
+        <div id="formato-oficial-print">
+          <div style="text-align: center;">
+            <p style="margin:0; font-size: 8pt; font-weight: bold;">INSTITUTO ESTATAL DE EDUCACIÓN PÚBLICA DE OAXACA</p>
+            <p style="margin:2px 0; font-size: 11pt; font-weight: bold;">ESCUELA SECUNDARIA TÉCNICA NÚM. 18</p>
+            <p style="margin:0; font-size: 8pt;">CLAVE: 20DST0018V &nbsp;&nbsp;|&nbsp;&nbsp; EL ESPINAL, OAXACA.</p>
+            <p style="margin:6px 0; font-size: 10pt; font-weight: bold; text-decoration: underline;">LISTA DE EVALUACIÓN Y ASISTENCIA</p>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 8pt; margin-top: 10px; font-weight: bold;">
+            <div>
+              ASIGNATURA: <span style="font-weight: normal;">${materiaTexto}</span><br>
+              PROFESOR (A): <span style="font-weight: normal;">${docenteTexto}</span><br>
+              FECHA DE ENTREGA: <span style="font-weight: normal;">${fechaHoy}</span>
+            </div>
+            <div>
+              CICLO ESCOLAR: <span style="font-weight: normal;">2025-2026</span><br>
+              GRADO Y GRUPO: <span style="font-weight: normal;">"${grupoTexto}"</span> &nbsp;&nbsp;|&nbsp;&nbsp; PERIODO: <span style="font-weight: normal;">${trimestreTexto}</span>
+            </div>
+          </div>
+
+          <table class="tabla-print">
+            <thead>
+              <tr>
+                <th style="width: 25px; text-align: center;">NUM</th>
+                <th style="text-align: left;">NOMBRE DEL ALUMNO</th>
+                <th style="width: 40px; text-align: center;">EVAL. CONT.</th>
+                <th style="width: 40px; text-align: center;">PEDAG.</th>
+                <th style="width: 40px; text-align: center;">PRUEBA</th>
+                <th style="width: 50px; text-align: center;">TRIMESTRAL</th>
+                <th style="width: 25px; text-align: center;">INAS.</th>
+                <th style="width: 25px; text-align: center;">PERM.</th>
+                <th style="width: 25px; text-align: center;">REC.</th>
+                <th style="width: 25px; text-align: center;">COND.</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      const filasWeb = document.querySelectorAll("#tbodyAlumnos tr");
+      let num = 1;
+
+      filasWeb.forEach(fila => {
+        const nombreElem = fila.querySelector(".nombre-alumno-txt") || fila.children[1];
+        const inputCalif = fila.querySelector(".input-calif");
+
+        if (nombreElem) {
+          const nombreText = nombreElem.childNodes[0].nodeValue ? nombreElem.childNodes[0].nodeValue.trim() : nombreElem.innerText.split('\n')[0];
+          const califVal = inputCalif ? inputCalif.value : "";
+
+          htmlFormat += `
+            <tr>
+              <td style="text-align: center; font-weight: bold;">${num}</td>
+              <td style="text-align: left;">${nombreText}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td style="text-align: center; font-weight: bold; font-size: 9pt;">${califVal}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>`;
+          num++;
+        }
+      });
+
+      htmlFormat += `
+            </tbody>
+          </table>
+
+          <div style="display: flex; justify-content: space-around; margin-top: 35px; font-size: 8pt; text-align: center;">
+            <div>
+              <br>_______________________________________<br>
+              <strong>MAESTR@ DE GRUPO</strong>
+            </div>
+            <div>
+              <br>_______________________________________<br>
+              <strong>REVISÓ<br>COORDINADORA ACADÉMICA</strong>
+            </div>
+          </div>
+        </div>`;
+
+      const previo = document.getElementById("formato-oficial-print");
+      if (previo) previo.remove();
+
+      document.body.insertAdjacentHTML('beforeend', htmlFormat);
+      window.print();
     }
 
     // ==========================================
