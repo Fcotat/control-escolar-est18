@@ -279,8 +279,19 @@
           document.getElementById("lblAlumnoCurp").innerText = data.alumno.curp;
           
           // LÍNEA NUEVA: Asigna el grado/grupo recibido de Apps Script
-          document.getElementById("lblAlumnoGrupo").innerText = data.alumno.grado_grupo || data.alumno.grupo || "1A";
+         // document.getElementById("lblAlumnoGrupo").innerText = data.alumno.grado_grupo || data.alumno.grupo || "1A";
+// LO PEGUE PARA QUE ENVIE EL GRUPO CORRECTO 09-SEP
+          // Determina el grupo o grado de forma dinámica
+  let grupoMostrar = data.alumno.grupo || data.alumno.grado_grupo;
 
+  if (!grupoMostrar) {
+    // Si el backend no envía la letra, detecta por cantidad de materias (10 materias = 1.º Grado)
+    grupoMostrar = (data.materias && data.materias.length === 10) ? "1.º GRADO" : "SECUNDARIA";
+  }
+
+  document.getElementById("lblAlumnoGrupo").innerText = grupoMostrar;
+
+          //HASTA ACA TERMINA 09-SEP
           const tbody = document.getElementById("tbodyMateriasBoleta");
           tbody.innerHTML = "";
 
