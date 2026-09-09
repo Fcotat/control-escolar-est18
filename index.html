@@ -119,12 +119,19 @@
           <tbody id="tbodyMateriasBoleta" class="divide-y divide-gray-200">
           </tbody>
         </table>
-
-        <div class="text-center mt-6">
+<!-- Este es un comentario en HTML 
+       <div class="text-center mt-6">
           <button onclick="window.print()" class="bg-emerald-700 text-white font-bold px-5 py-2 rounded text-sm hover:bg-emerald-800 transition">
             🖨️ Imprimir / Guardar en PDF
           </button>
-        </div>
+        </div>  -->
+<div class="text-center mt-6">
+  <button onclick="imprimirBoletaAlumno()" class="bg-emerald-700 text-white font-bold px-5 py-2 rounded text-sm hover:bg-emerald-800 transition">
+    🖨️ Imprimir / Guardar en PDF
+  </button>
+</div>
+
+        
       </div>
     </section>
 
@@ -293,6 +300,66 @@
         btn.innerText = "🔍 Consultar Calificaciones";
       }
     }
+    function imprimirBoletaAlumno() {
+  const nombre = document.getElementById("lblAlumnoNombre").innerText;
+  const curp = document.getElementById("lblAlumnoCurp").innerText;
+  const filasMaterias = document.querySelectorAll("#tbodyMateriasBoleta tr");
+
+  if (!nombre || filasMaterias.length === 0) {
+    alert("No hay datos de boleta para imprimir.");
+    return;
+  }
+
+  let filasHtml = "";
+  filasMaterias.forEach(tr => {
+    const cols = tr.querySelectorAll("td");
+    if (cols.length >= 2) {
+      filasHtml += `
+        <tr>
+          <td style="border: 1px solid #000; padding: 4px; text-align: left;">${cols[0].innerText}</td>
+          <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold;">${cols[1].innerText}</td>
+        </tr>`;
+    }
+  });
+
+  const htmlPrint = `
+    <div id="formato-oficial-print">
+      <div style="text-align: center; font-family: Arial, sans-serif;">
+        <p style="margin:0; font-size: 9pt; font-weight: bold;">INSTITUTO ESTATAL DE EDUCACIÓN PÚBLICA DE OAXACA</p>
+        <p style="margin:2px 0; font-size: 11pt; font-weight: bold;">ESCUELA SECUNDARIA TÉCNICA NÚM. 18</p>
+        <p style="margin:0; font-size: 8pt;">CLAVE: 20DST0018V &nbsp;|&nbsp; EL ESPINAL, OAXACA</p>
+        <p style="margin:8px 0; font-size: 10pt; font-weight: bold; text-decoration: underline;">REPORTE DE CALIFICACIONES</p>
+      </div>
+
+      <div style="font-size: 8.5pt; margin: 10px 0; font-family: Arial, sans-serif;">
+        <p style="margin: 2px 0;"><strong>ALUMNO:</strong> ${nombre}</p>
+        <p style="margin: 2px 0;"><strong>CURP:</strong> ${curp}</p>
+      </div>
+
+      <table class="tabla-print" style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th style="border: 1px solid #000; padding: 4px; text-align: left;">ASIGNATURA</th>
+            <th style="border: 1px solid #000; padding: 4px; text-align: center; width: 80px;">PROMEDIO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasHtml}
+        </tbody>
+      </table>
+    </div>`;
+
+  // Limpia impresiones anteriores e inserta el contenedor que @media print sí permite mostrar
+  const previo = document.getElementById("formato-oficial-print");
+  if (previo) previo.remove();
+
+  document.body.insertAdjacentHTML('beforeend', htmlPrint);
+
+  // Da un margen de 200ms para asegurar el renderizado en pantalla antes de imprimir
+  setTimeout(() => {
+    window.print();
+  }, 200);
+}
 
     // ==========================================
     // INICIO DE SESIÓN DOCENTE
@@ -392,7 +459,7 @@
       }
     }
 
-    function renderizarTabla(alumnos) {
+  /*  function renderizarTabla(alumnos) {
       const tbody = document.getElementById("tbodyAlumnos");
       tbody.innerHTML = "";
 
@@ -411,7 +478,32 @@
         `;
         tbody.appendChild(tr);
       });
-    }
+    } */
+
+
+    function renderizarTabla(alumnos) {
+  const tbody = document.getElementById("tbodyAlumnos");
+  tbody.innerHTML = "";
+
+  alumnos.forEach(alum => {
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-gray-50";
+    tr.innerHTML = `
+      <td class="p-3 text-center font-bold text-gray-600">${alum.numero_lista}</td>
+      <td class="p-3 font-medium">
+        <span class="nombre-alumno-txt">${alum.nombre_completo}</span><br>
+        <span class="text-xs text-gray-400">${alum.curp}</span>
+      </td>
+      <td class="p-3 text-center">
+        <input type="number" step="0.1" min="5" max="10" data-curp="${alum.curp}" class="input-calif w-24 p-1 border rounded text-center font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" value="">
+      </td>
+      <td class="p-3">
+        <input type="text" data-curp="${alum.curp}" class="input-obs w-full p-1 border rounded text-sm text-gray-600 focus:ring-2 focus:ring-blue-500 outline-none" value="" placeholder="Opcional">
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
     // ==========================================
     // GUARDAR CALIFICACIONES CON OPCIÓN DE IMPRESIÓN
